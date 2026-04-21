@@ -1,0 +1,25 @@
+{
+  "name": "refactor-proyect-web-mobile",
+  "version": "1.0.0",
+  "description": "Proyecto para utilizar GitHub y Git de manera correcta, con las buenas practicas mostradas en WEB&amp;MOBILE.",
+  "main": "problema.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Crisxpy/Refactor-Proyect-Web-Mobile.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Crisxpy/Refactor-Proyect-Web-Mobile/issues"
+  },
+  "homepage": "https://github.com/Crisxpy/Refactor-Proyect-Web-Mobile#readme",
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.2.1",
+    "globals": "^17.5.0"
+  }
+}
