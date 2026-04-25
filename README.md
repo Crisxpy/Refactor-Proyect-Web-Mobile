@@ -2,14 +2,21 @@
 Proyecto para utilizar GitHub y Git de manera correcta, con las buenas practicas mostradas en WEBMOBILE. 
 Refactor-Proyect-Web-Mobile/
 ├── src/                    # Todo el código fuente refactorizado
-│   ├── auth/               # Lógica de login, registro y sesiones
-│   │   └── authService.js
+│   ├── auth/               
+│   │   ├── authService.js  # Lógica de login, registro y sesiones
+│   │   └── users.js
 │   ├── modules/            # Módulos principales de la aplicación
 │   │   ├── products.js     # Gestión de productos (search, render)
-│   │   └── cart.js         # Lógica del carrito y cupones
+│   │   └── cart.js         # Lógica de  carrito 
+│   │   └── cupones.js         # Lógica de cupones
+│   │   └── notificaciones.js         # notificaciones al comprador
+│   │   └── paymnent.js         # Lógica de proceso de pago
 │   ├── utils/              # Funciones auxiliares y formateadores
 │   │   ├── formatters.js   # Aquí van fmtPrice, mostrarPrecio, etc.
 │   │   └── validators.js   # Validaciones de formularios
+│   │   └── infogetter.js   # funcion de obtencion de informacion
+│   │   └── paginator.js   # creador de paginadores
+│   │   └── sorter.js   # arreglador / Ordenador 
 │   ├── data/               # Archivos JSON o mocks de datos
 │   │   └── database.json
 │   └── index.js            # Punto de entrada que orquesta todo
