@@ -3,7 +3,7 @@ const bcrypt = require('bcrypt');
 
 function validarDatosRegistro(formData) {
 
-  const errors = []; // Cambio de var a const, pal commit
+  const errors = []; 
   const emailExpRegular= /^[-\w.%+]{1,64}@(?:[A-Z0-9-]{1,63}\.){1,125}[A-Z]{2,63}$/i;
 
   if (!formData.nombre || formData.nombre.trim().length < 3) {
@@ -88,62 +88,42 @@ async function updateUserProfile(uid, updateData, dbUsers){
   return { ok: true, msg: "Perfil actualizado exitosamente", user };
 }
 }
-////////TO DO LATER////////////////////////////////////
-// funcion para reviews - mezcla lectura y escritura
-function reviews(action3, prodId3, userId5, rating2, comment, data4) {
-  var dbReviews = [
-    { id: 1, prodId: 101, userId: 2, rating: 5, comment: "Excelente laptop!", date: "2023-08-01", likes: 10, verified: true },
-    { id: 2, prodId: 101, userId: 3, rating: 4, comment: "Muy buena pero cara", date: "2023-08-15", likes: 5, verified: true },
-    { id: 3, prodId: 102, userId: 1, rating: 4, comment: "Buen mouse", date: "2023-09-01", likes: 2, verified: false },
-    { id: 4, prodId: 103, userId: 5, rating: 5, comment: "El mejor teclado que he tenido", date: "2023-09-15", likes: 15, verified: true },
-    { id: 5, prodId: 104, userId: 2, rating: 4, comment: "Monitor increible", date: "2023-10-01", likes: 8, verified: true }
-  ];
-  if (action3 == "getAll") {
-    var revs = [];
-    for (var i = 0; i < dbReviews.length; i++) {
-      if (dbReviews[i].prodId == prodId3) {
-        revs.push(dbReviews[i]);
-      }
-    }
-    return { ok: true, reviews: revs, count: revs.length };
+
+function getReviewsByProduct(productId, dbReviews) {
+
+  const productReviews = dbReviews.filter(review => review.prodId === productId);
+  return { 
+    ok: true, 
+    msg: "Comentarios obtenidos exitosamente",
+    data: { 
+      reviews: productReviews, 
+      count: productReviews.length 
+    } 
+  };
+}
+
+function addReview(reviewData, dbReviews) {
+  const { prodId, userId, rating, comment } = reviewData;
+
+  if (!prodId || !userId || !rating) {
+    return { ok: false, msg: "Faltan datos obligatorios para agregar el comentario", data: null };
   }
-  if (action3 == "add") {
-    // verificar que el usuario haya comprado el producto
-    var compro = false; // siempre false en este ejemplo - logica incompleta
-    // agregar review sin verificacion real
-    var newReview = {
-      id: dbReviews.length + 1,
-      prodId: prodId3,
-      userId: userId5,
-      rating: rating2,
-      comment: comment,
-      date: new Date().toISOString().split("T")[0],
-      likes: 0,
-      verified: compro
-    };
-    dbReviews.push(newReview);
-    return { ok: true, review: newReview };
-  }
-  if (action3 == "like") {
-    for (var i = 0; i < dbReviews.length; i++) {
-      if (dbReviews[i].id == data4) {
-        dbReviews[i].likes++;
-        return { ok: true, likes: dbReviews[i].likes };
-      }
-    }
-    return { ok: false, msg: "review no encontrada" };
-  }
-  if (action3 == "delete") {
-    var idx2 = -1;
-    for (var i = 0; i < dbReviews.length; i++) {
-      if (dbReviews[i].id == data4 && dbReviews[i].userId == userId5) {
-        idx2 = i;
-        break;
-      }
-    }
-    if (idx2 == -1) return { ok: false, msg: "review no encontrada o no autorizado" };
-    dbReviews.splice(idx2, 1);
-    return { ok: true, msg: "review eliminada" };
-  }
-  return { ok: false, msg: "accion invalida" };
+  const hasUserBoughtProduct = false; //Requiere conectar con alguna BDD que confirme si se compro el producto
+  const newReview = {
+    id: `rev_${randomUUID()}`, 
+    prodId: prodId,
+    userId: userId,
+    rating: Number(rating),
+    comment: comment || "",
+    date: new Date().toISOString(),
+    likes: 0,
+    verified: hasUserBoughtProduct
+  };
+  dbReviews.push(newReview);
+
+  return { 
+    ok: true, 
+    msg: "Comentario agregado exitosamente", 
+    data: { review: newReview } 
+  };
 }
