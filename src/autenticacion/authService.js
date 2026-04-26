@@ -31,8 +31,8 @@ function loginUser(email, password, dbUsers) {
   return authErrorResponse;
   }
 
-  if (user.bloqueado) {return 
-  { ok: false, msg: "Usuario bloqueado", data: null };
+  if (user.bloqueado) {
+    return { ok: false, msg: "Usuario bloqueado", data: null};
   }
 
   if (!user.activo) {
@@ -52,3 +52,8 @@ function loginUser(email, password, dbUsers) {
   };
   return { ok: true, msg: "Login exitoso", data: currentSession }
 }
+
+module.exports = {
+  loginUser,
+  calcularNivelUsuario
+};
