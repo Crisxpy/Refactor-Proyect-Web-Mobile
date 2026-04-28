@@ -129,11 +129,52 @@ function renderProduct(producto) {
   return html;
 }
 
+function checkInventory(productos, idProducto) {
+  // Buscar el producto por id.
+  const producto = productos.find((item) => item.id === idProducto);
+  let estado = "Alto";
+  let color = "green";
+  let alerta = false;
+
+  // Validar que el producto exista.
+  if (!producto) {
+    return { ok: false };
+  }
+
+  // Definir estado segun stock disponible.
+  if (producto.stock === 0) {
+    estado = "Agotado";
+    color = "red";
+    alerta = true;
+  } else if (producto.stock <= 5) {
+    estado = "Critico";
+    color = "orange";
+    alerta = true;
+  } else if (producto.stock <= 15) {
+    estado = "Bajo";
+    color = "yellow";
+    alerta = true;
+  } else if (producto.stock <= 30) {
+    estado = "Normal";
+  }
+
+  // Devolver resumen de inventario.
+  return {
+    ok: true,
+    productoId: idProducto,
+    stock: producto.stock,
+    estado: estado,
+    color: color,
+    alerta: alerta
+  };
+}
+
 module.exports = {
   buscarProductos,
   ordenarProductos,
   paginarProductos,
-  renderProduct
+  renderProduct,
+  checkInventory
 };
 
 /*
