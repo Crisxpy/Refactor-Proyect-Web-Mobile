@@ -1,7 +1,7 @@
 const { randomUUID } = require('crypto');
 
 function calcularNivelUsuario(puntos) {
-  let = nivel;
+  let nivel;
   if (puntos<100){
     nivel="Bronce";
   }
