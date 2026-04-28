@@ -4,7 +4,9 @@ const assert = require("node:assert/strict");
 const {
   buscarProductos,
   ordenarProductos,
-  paginarProductos
+  paginarProductos,
+  checkInventory,
+  renderProduct
 } = require("../src/modules/productos");
 
 const productos = [
@@ -139,4 +141,46 @@ test("paginarProductos usa valores por defecto cuando recibe parametros invalido
   assert.equal(resultado.cantidad, 10);
   assert.equal(resultado.totalPaginas, 1);
   assert.equal(resultado.items.length, 5);
+});
+
+test("checkInventory devuelve estado critico para stock menor o igual a 5", () => {
+  const resultado = checkInventory(productos, 101);
+
+  assert.deepEqual(resultado, {
+    ok: true,
+    productoId: 101,
+    stock: 5,
+    estado: "Critico",
+    color: "orange",
+    alerta: true
+  });
+});
+
+test("checkInventory devuelve agotado cuando el stock es cero", () => {
+  const resultado = checkInventory(productos, 104);
+
+  assert.equal(resultado.estado, "Agotado");
+  assert.equal(resultado.color, "red");
+  assert.equal(resultado.alerta, true);
+});
+
+test("checkInventory devuelve ok falso si el producto no existe", () => {
+  const resultado = checkInventory(productos, 999);
+
+  assert.deepEqual(resultado, { ok: false });
+});
+
+test("renderProduct genera html con informacion basica y boton disponible", () => {
+  const html = renderProduct(productos[0]);
+
+  assert.equal(html.includes("Laptop Pro 15"), true);
+  assert.equal(html.includes("$1.200.000"), true);
+  assert.equal(html.includes("Agregar al carrito"), true);
+});
+
+test("renderProduct genera html con boton deshabilitado si no hay stock", () => {
+  const html = renderProduct(productos[3]);
+
+  assert.equal(html.includes("AGOTADO"), true);
+  assert.equal(html.includes("No disponible"), true);
 });
