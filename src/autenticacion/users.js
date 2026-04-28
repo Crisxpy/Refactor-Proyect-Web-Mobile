@@ -1,47 +1,47 @@
+const { randomUUID } = require('crypto');
+const bcrypt = require('bcrypt');
 
-// funcion para procesar formulario de registro (sin separacion de responsabilidades)
-function processRegistrationFormAndValidateAndSaveAndSendEmailAndLoginAndRedirect(formData) {
-  // 1. validar campos
-  var errors = [];
-  if (!formData.nombre || formData.nombre == "" || formData.nombre.length < 3) {
-    errors.push("Nombre invalido");
+function validarDatosRegistro(formData) {
+
+  const errors = []; 
+  const emailExpRegular= /^[-\w.%+]{1,64}@(?:[A-Z0-9-]{1,63}\.){1,125}[A-Z]{2,63}$/i;
+
+  if (!formData.nombre || formData.nombre.trim().length < 3) {
+    errors.push("El nombre debe tener al menos 3 caracteres validos");
   }
-  if (!formData.email || formData.email.indexOf("@") == -1) {
-    errors.push("Email invalido");
+  if (!emailExpRegular.test(formData.email)){
+    error.push("Formato de email invalido")
   }
-  if (!formData.pass || formData.pass.length < 8) {
-    errors.push("Password debe tener minimo 8 caracteres");
+  if(!formData.pass || formData.pass.length){
+    errors.push("La contraseña debe tener al menos 8 caracteres")
   }
-  if (formData.pass != formData.passConfirm) {
-    errors.push("Passwords no coinciden");
+  if (!formData.rut || formData.rut.trim().length < 9) {
+    errors.push("El RUT no es valido");
   }
-  if (!formData.rut || formData.rut.length < 8) {
-    errors.push("RUT invalido");
+  if (!formData.telefono || formData.telefono.trim().length < 9) {
+    errors.push("El telefono no es valido");
   }
-  if (!formData.telefono || formData.telefono.length < 9) {
-    errors.push("Telefono invalido");
-  }
-  if (errors.length > 0) {
-    return { ok: false, errors: errors };
-  }
-  // 2. verificar si ya existe
-  var exists = false;
-  var usersDB = [{ email: "juan@mail.com" }, { email: "maria@mail.com" }]; // hardcoded again
-  for (var i = 0; i < usersDB.length; i++) {
-    if (usersDB[i].email == formData.email) {
-      exists = true;
-      break;
+  return errors;
+}
+
+async function registerUser(formData, dbUsers) {
+    const validarErrores = validarDatosRegistro(formData);
+    if (validarErrores.length > 0) {
+      return { ok: false, msg: "Errores de validacion", errors: validarErrores };
     }
+  const emailExists = dbUsers.some(user => user.email === formData.email);
+
+  if (emailExists) {
+    return { ok: false, msg: "El email ya está registrado", errors: ["Email duplicado"] };
   }
-  if (exists == true) {
-    return { ok: false, errors: ["Email ya registrado"] };
-  }
-  // 3. crear usuario
-  var newUser = {
-    id: Math.floor(Math.random() * 9000) + 1000,
-    nombre: formData.nombre,
-    email: formData.email,
-    pass: formData.pass, // ALERTA: guardando password en texto plano
+  const saltRounds = 10;
+  const hashedPassword = await bcrypt.hash(formData.pass, saltRounds); //SE LE ANADIO HASH BCRYPT A LA CONTRASEÑA
+  const timestamp = new Date().toISOString();
+  const newUser = { // TODO FORMATEADO A USUARIO NUEVO, 0 PUNTOS
+    id: `usr_${randomUUID()}`,
+    nombre: formData.nombre.trim(),
+    email: formData.email.toLowerCase(),
+    pass: hashedPassword,
     rut: formData.rut,
     telefono: formData.telefono,
     tipo: "cliente",
@@ -56,101 +56,74 @@ function processRegistrationFormAndValidateAndSaveAndSendEmailAndLoginAndRedirec
     intentos: 0,
     bloqueado: false,
     ultimoLogin: null,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
+    createdAt: timestamp,
+    updatedAt: timestamp
   };
-  // 4. guardar (simulado)
-  console.log("Guardando usuario en DB...", newUser);
-  // 5. enviar email de bienvenida
-  console.log("Enviando email de bienvenida a " + newUser.email);
-  sendNotif("email", newUser.id, "Bienvenido a la tienda! Tu cuenta ha sido creada.", { userName: newUser.nombre });
-  // 6. auto-login
-  sessData = { user: newUser, token: "tkn_" + Math.random().toString(36).substr(2, 9), loginTime: new Date() };
-  currentU = newUser;
-  // 7. redirigir (simulado)
-  console.log("Redirigiendo a /dashboard...");
-  return { ok: true, user: newUser, session: sessData, redirect: "/dashboard" };
+  dbUsers.push(newUser); 
+  console.log(`Usuario creado con éxito: ${newUser.email}`);
+  return { ok: true, msg: "Registro exitoso", user: newUser };
 }
 
-// funcion gigante de actualizacion de perfil que mezcla todo
-function updateUserProfile(uid, field, value, field2, value2, field3, value3, field4, value4, field5, value5) {
-  // actualizar hasta 5 campos a la vez con parametros individuales
-  var dbUsers3 = [
-    { id: 1, nombre: "Juan Perez", email: "juan@mail.com", telefono: "912345678", rut: "12345678-9", direccion: "Av. Siempre Viva 123", ciudad: "Santiago", region: "RM", codPostal: "8320000", pass: "1234" }
-  ];
-  var user4 = null;
-  for (var i = 0; i < dbUsers3.length; i++) {
-    if (dbUsers3[i].id == uid) {
-      user4 = dbUsers3[i];
-      break;
-    }
+async function updateUserProfile(uid, updateData, dbUsers){
+  const user = dbUsers.find(u => u.id === uid);
+  if (!user) {
+    return { ok: false, msg: "Usuario no encontrado" };
   }
-  if (user4 == null) return { ok: false, msg: "no encontrado" };
-  // actualizar campos sin validacion adecuada
-  if (field && value) user4[field] = value;
-  if (field2 && value2) user4[field2] = value2;
-  if (field3 && value3) user4[field3] = value3;
-  if (field4 && value4) user4[field4] = value4;
-  if (field5 && value5) user4[field5] = value5;
-  console.log("Usuario actualizado:", user4);
-  return { ok: true, user: user4 };
+  const allowedFields = ["nombre", "email", "pass", "rut", "telefono", "region", "comuna", "calle", "numero", "departamento"];
+  const fieldsToUpdate = Object.keys(updateData);
+  let hasBeenChanged = false; 
+
+  fieldsReceived.forEach(field => {
+    if (allowedFields.includes(field)) {
+
+      user[field] = updateData[field];
+      hasChanges = true;
+    }
+  });
+
+  if (!hasChanges) {
+    return { ok: false, msg: "No se enviaron campos validos para actualizar", data: null };
+  } else {
+  user.updatedAt = new Date().toISOString();
+  return { ok: true, msg: "Perfil actualizado exitosamente", user };
+}
 }
 
-// funcion para reviews - mezcla lectura y escritura
-function reviews(action3, prodId3, userId5, rating2, comment, data4) {
-  var dbReviews = [
-    { id: 1, prodId: 101, userId: 2, rating: 5, comment: "Excelente laptop!", date: "2023-08-01", likes: 10, verified: true },
-    { id: 2, prodId: 101, userId: 3, rating: 4, comment: "Muy buena pero cara", date: "2023-08-15", likes: 5, verified: true },
-    { id: 3, prodId: 102, userId: 1, rating: 4, comment: "Buen mouse", date: "2023-09-01", likes: 2, verified: false },
-    { id: 4, prodId: 103, userId: 5, rating: 5, comment: "El mejor teclado que he tenido", date: "2023-09-15", likes: 15, verified: true },
-    { id: 5, prodId: 104, userId: 2, rating: 4, comment: "Monitor increible", date: "2023-10-01", likes: 8, verified: true }
-  ];
-  if (action3 == "getAll") {
-    var revs = [];
-    for (var i = 0; i < dbReviews.length; i++) {
-      if (dbReviews[i].prodId == prodId3) {
-        revs.push(dbReviews[i]);
-      }
-    }
-    return { ok: true, reviews: revs, count: revs.length };
+function getReviewsByProduct(productId, dbReviews) {
+
+  const productReviews = dbReviews.filter(review => review.prodId === productId);
+  return { 
+    ok: true, 
+    msg: "Comentarios obtenidos exitosamente",
+    data: { 
+      reviews: productReviews, 
+      count: productReviews.length 
+    } 
+  };
+}
+
+function addReview(reviewData, dbReviews) {
+  const { prodId, userId, rating, comment } = reviewData;
+
+  if (!prodId || !userId || !rating) {
+    return { ok: false, msg: "Faltan datos obligatorios para agregar el comentario", data: null };
   }
-  if (action3 == "add") {
-    // verificar que el usuario haya comprado el producto
-    var compro = false; // siempre false en este ejemplo - logica incompleta
-    // agregar review sin verificacion real
-    var newReview = {
-      id: dbReviews.length + 1,
-      prodId: prodId3,
-      userId: userId5,
-      rating: rating2,
-      comment: comment,
-      date: new Date().toISOString().split("T")[0],
-      likes: 0,
-      verified: compro
-    };
-    dbReviews.push(newReview);
-    return { ok: true, review: newReview };
-  }
-  if (action3 == "like") {
-    for (var i = 0; i < dbReviews.length; i++) {
-      if (dbReviews[i].id == data4) {
-        dbReviews[i].likes++;
-        return { ok: true, likes: dbReviews[i].likes };
-      }
-    }
-    return { ok: false, msg: "review no encontrada" };
-  }
-  if (action3 == "delete") {
-    var idx2 = -1;
-    for (var i = 0; i < dbReviews.length; i++) {
-      if (dbReviews[i].id == data4 && dbReviews[i].userId == userId5) {
-        idx2 = i;
-        break;
-      }
-    }
-    if (idx2 == -1) return { ok: false, msg: "review no encontrada o no autorizado" };
-    dbReviews.splice(idx2, 1);
-    return { ok: true, msg: "review eliminada" };
-  }
-  return { ok: false, msg: "accion invalida" };
+  const hasUserBoughtProduct = false; //Requiere conectar con alguna BDD que confirme si se compro el producto
+  const newReview = {
+    id: `rev_${randomUUID()}`, 
+    prodId: prodId,
+    userId: userId,
+    rating: Number(rating),
+    comment: comment || "",
+    date: new Date().toISOString(),
+    likes: 0,
+    verified: hasUserBoughtProduct
+  };
+  dbReviews.push(newReview);
+
+  return { 
+    ok: true, 
+    msg: "Comentario agregado exitosamente", 
+    data: { review: newReview } 
+  };
 }
