@@ -3,7 +3,8 @@ const assert = require("node:assert/strict");
 
 const {
   buscarProductos,
-  ordenarProductos
+  ordenarProductos,
+  paginarProductos
 } = require("../src/modules/productos");
 
 const productos = [
@@ -114,4 +115,28 @@ test("ordenarProductos ordena por precio ascendente sin modificar el arreglo ori
     [102, 103, 105, 104, 101]
   );
   assert.equal(productos[0].id, 101);
+});
+
+test("paginarProductos devuelve la pagina solicitada con metadata", () => {
+  const resultado = paginarProductos(productos, { pagina: 2, cantidad: 2 });
+
+  assert.deepEqual(
+    resultado.items.map((producto) => producto.id),
+    [103, 104]
+  );
+  assert.equal(resultado.pagina, 2);
+  assert.equal(resultado.totalPaginas, 3);
+  assert.equal(resultado.total, 5);
+  assert.equal(resultado.cantidad, 2);
+  assert.equal(resultado.tienePaginaAnterior, true);
+  assert.equal(resultado.tienePaginaSiguiente, true);
+});
+
+test("paginarProductos usa valores por defecto cuando recibe parametros invalidos", () => {
+  const resultado = paginarProductos(productos, { pagina: 0, cantidad: 0 });
+
+  assert.equal(resultado.pagina, 1);
+  assert.equal(resultado.cantidad, 10);
+  assert.equal(resultado.totalPaginas, 1);
+  assert.equal(resultado.items.length, 5);
 });
