@@ -58,7 +58,8 @@ function ordenarProductos(productos, opciones = {}) {
 }
 
 module.exports = {
-  buscarProductos
+  buscarProductos,
+  ordenarProductos
 };
 
 /*
