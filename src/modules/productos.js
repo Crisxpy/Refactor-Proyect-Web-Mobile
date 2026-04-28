@@ -81,10 +81,59 @@ function paginarProductos(productos, opciones = {}) {
   };
 }
 
+function renderProduct(producto) {
+  // Preparar datos visuales del producto.
+  let html = "";
+  const precio = "$" + producto.prec.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  const estrellas = Array.from({ length: 5 }, (_, i) => {
+    return i < Math.floor(producto.rating) ? "*" : "-";
+  }).join("");
+
+  // Crear contenedor principal.
+  html += "<div class='product-card'>";
+  html += "<div class='product-img'>";
+  html += "<img src='" + producto.imgs[0] + "' alt='" + producto.nom + "'>";
+
+  // Agregar etiquetas segun stock.
+  if (producto.stock <= 0) {
+    html += "<div class='badge-agotado'>AGOTADO</div>";
+  }
+
+  if (producto.stock > 0 && producto.stock <= 5) {
+    html += "<div class='badge-poco-stock'>ULTIMAS " + producto.stock + " UNIDADES</div>";
+  }
+
+  html += "</div>";
+  html += "<div class='product-info'>";
+  html += "<h3>" + producto.nom + "</h3>";
+
+  // Mostrar rating, descripcion, precio y categoria.
+  html += "<div class='rating'>";
+  html += estrellas;
+  html += " (" + producto.rating + ")";
+  html += "</div>";
+  html += "<p class='desc'>" + producto.desc + "</p>";
+  html += "<div class='price'>" + precio + "</div>";
+  html += "<div class='category'>Categoria: " + producto.cat + "</div>";
+
+  // Mostrar accion disponible segun stock y estado.
+  if (producto.activo === true && producto.stock > 0) {
+    html += "<button onclick='addToCart(" + producto.id + ", 1)' class='btn-cart'>Agregar al carrito</button>";
+  } else {
+    html += "<button disabled class='btn-cart-disabled'>No disponible</button>";
+  }
+
+  html += "</div>";
+  html += "</div>";
+
+  return html;
+}
+
 module.exports = {
   buscarProductos,
   ordenarProductos,
-  paginarProductos
+  paginarProductos,
+  renderProduct
 };
 
 /*
