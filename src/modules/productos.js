@@ -1,3 +1,184 @@
+function buscarProductos(productos, filtros = {}) {
+  // Preparar filtros de busqueda (como no se definieron los limites de precio se dejan los mismos que el problema original).
+  const {
+    query = "",
+    categoria = "",
+    precioMin = 0,
+    precioMax = 999999999
+  } = filtros;
+
+  const texto = String(query).trim().toLowerCase();
+  const categoriaBuscada = String(categoria).trim().toLowerCase();
+  const min = Number(precioMin);
+  const max = Number(precioMax);
+
+  // Filtrar productos activos que coincidan con texto, categoria y precio.
+  const resultados = productos.filter((producto) => {
+    const nombre = producto.nom ? producto.nom.toLowerCase() : "";
+    const descripcion = producto.desc ? producto.desc.toLowerCase() : "";
+    const tags = Array.isArray(producto.tags) ? producto.tags : [];
+
+    const coincideTexto =
+      texto === "" ||
+      nombre.includes(texto) ||
+      descripcion.includes(texto) ||
+      tags.some((tag) => tag.toLowerCase().includes(texto));
+
+    const coincideCategoria =
+      categoriaBuscada === "" || String(producto.cat).toLowerCase() === categoriaBuscada;
+
+    const coincidePrecio = producto.prec >= min && producto.prec <= max;
+
+    return producto.activo !== false && coincideTexto && coincideCategoria && coincidePrecio;
+  });
+
+  // Ordenar resultados por mejor rating.
+  return ordenarProductos(resultados, { campo: "rating", orden: "desc" });
+}
+
+function ordenarProductos(productos, opciones = {}) {
+  // Crear una copia para no modificar el arreglo original.
+  const { campo = "rating", orden = "desc" } = opciones;
+  const lista = productos.slice();
+
+  // Ordenar por el campo solicitado.
+  lista.sort((productoA, productoB) => {
+    if (orden === "asc") {
+      if (productoA[campo] < productoB[campo]) return -1;
+      if (productoA[campo] > productoB[campo]) return 1;
+      return 0;
+    }
+
+    if (productoA[campo] > productoB[campo]) return -1;
+    if (productoA[campo] < productoB[campo]) return 1;
+    return 0;
+  });
+
+  return lista;
+}
+
+function paginarProductos(productos, opciones = {}) {
+  // Validar pagina y cantidad por pagina.
+  const { pagina = 1, cantidad = 10 } = opciones;
+  const paginaActual = Number(pagina) > 0 ? Number(pagina) : 1;
+  const cantidadPorPagina = Number(cantidad) > 0 ? Number(cantidad) : 10;
+
+  // Calcular rango de elementos.
+  const total = productos.length;
+  const totalPaginas = Math.ceil(total / cantidadPorPagina);
+  const inicio = (paginaActual - 1) * cantidadPorPagina;
+  const fin = inicio + cantidadPorPagina;
+
+  // Devolver productos de la pagina actual con metadata.
+  return {
+    items: productos.slice(inicio, fin),
+    pagina: paginaActual,
+    totalPaginas: totalPaginas,
+    total: total,
+    cantidad: cantidadPorPagina,
+    tienePaginaAnterior: paginaActual > 1,
+    tienePaginaSiguiente: paginaActual < totalPaginas
+  };
+}
+
+function renderProduct(producto) {
+  // Preparar datos visuales del producto.
+  let html = "";
+  const precio = "$" + producto.prec.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  const estrellas = Array.from({ length: 5 }, (_, i) => {
+    return i < Math.floor(producto.rating) ? "*" : "-";
+  }).join("");
+
+  // Crear contenedor principal.
+  html += "<div class='product-card'>";
+  html += "<div class='product-img'>";
+  html += "<img src='" + producto.imgs[0] + "' alt='" + producto.nom + "'>";
+
+  // Agregar etiquetas segun stock.
+  if (producto.stock <= 0) {
+    html += "<div class='badge-agotado'>AGOTADO</div>";
+  }
+
+  if (producto.stock > 0 && producto.stock <= 5) {
+    html += "<div class='badge-poco-stock'>ULTIMAS " + producto.stock + " UNIDADES</div>";
+  }
+
+  html += "</div>";
+  html += "<div class='product-info'>";
+  html += "<h3>" + producto.nom + "</h3>";
+
+  // Mostrar rating, descripcion, precio y categoria.
+  html += "<div class='rating'>";
+  html += estrellas;
+  html += " (" + producto.rating + ")";
+  html += "</div>";
+  html += "<p class='desc'>" + producto.desc + "</p>";
+  html += "<div class='price'>" + precio + "</div>";
+  html += "<div class='category'>Categoria: " + producto.cat + "</div>";
+
+  // Mostrar accion disponible segun stock y estado.
+  if (producto.activo === true && producto.stock > 0) {
+    html += "<button onclick='addToCart(" + producto.id + ", 1)' class='btn-cart'>Agregar al carrito</button>";
+  } else {
+    html += "<button disabled class='btn-cart-disabled'>No disponible</button>";
+  }
+
+  html += "</div>";
+  html += "</div>";
+
+  return html;
+}
+
+function checkInventory(productos, idProducto) {
+  // Buscar el producto por id.
+  const producto = productos.find((item) => item.id === idProducto);
+  let estado = "Alto";
+  let color = "green";
+  let alerta = false;
+
+  // Validar que el producto exista.
+  if (!producto) {
+    return { ok: false };
+  }
+
+  // Definir estado segun stock disponible.
+  if (producto.stock === 0) {
+    estado = "Agotado";
+    color = "red";
+    alerta = true;
+  } else if (producto.stock <= 5) {
+    estado = "Critico";
+    color = "orange";
+    alerta = true;
+  } else if (producto.stock <= 15) {
+    estado = "Bajo";
+    color = "yellow";
+    alerta = true;
+  } else if (producto.stock <= 30) {
+    estado = "Normal";
+  }
+
+  // Devolver resumen de inventario.
+  return {
+    ok: true,
+    productoId: idProducto,
+    stock: producto.stock,
+    estado: estado,
+    color: color,
+    alerta: alerta
+  };
+}
+
+module.exports = {
+  buscarProductos,
+  ordenarProductos,
+  paginarProductos,
+  renderProduct,
+  checkInventory
+};
+
+/*
+Codigo original pendiente de reemplazar progresivamente.
 
 /// buscar productos
 //funcion para buscar productos en la db
@@ -78,3 +259,4 @@ function search(q, filters) {
   }
   return results;
 }
+*/
