@@ -57,9 +57,34 @@ function ordenarProductos(productos, opciones = {}) {
   return lista;
 }
 
+function paginarProductos(productos, opciones = {}) {
+  // Validar pagina y cantidad por pagina.
+  const { pagina = 1, cantidad = 10 } = opciones;
+  const paginaActual = Number(pagina) > 0 ? Number(pagina) : 1;
+  const cantidadPorPagina = Number(cantidad) > 0 ? Number(cantidad) : 10;
+
+  // Calcular rango de elementos.
+  const total = productos.length;
+  const totalPaginas = Math.ceil(total / cantidadPorPagina);
+  const inicio = (paginaActual - 1) * cantidadPorPagina;
+  const fin = inicio + cantidadPorPagina;
+
+  // Devolver productos de la pagina actual con metadata.
+  return {
+    items: productos.slice(inicio, fin),
+    pagina: paginaActual,
+    totalPaginas: totalPaginas,
+    total: total,
+    cantidad: cantidadPorPagina,
+    tienePaginaAnterior: paginaActual > 1,
+    tienePaginaSiguiente: paginaActual < totalPaginas
+  };
+}
+
 module.exports = {
   buscarProductos,
-  ordenarProductos
+  ordenarProductos,
+  paginarProductos
 };
 
 /*
