@@ -1,3 +1,68 @@
+function buscarProductos(productos, filtros = {}) {
+  // Preparar filtros de busqueda (como no se definieron los limites de precio se dejan los mismos que el problema original).
+  const {
+    query = "",
+    categoria = "",
+    precioMin = 0,
+    precioMax = 999999999
+  } = filtros;
+
+  const texto = String(query).trim().toLowerCase();
+  const categoriaBuscada = String(categoria).trim().toLowerCase();
+  const min = Number(precioMin);
+  const max = Number(precioMax);
+
+  // Filtrar productos activos que coincidan con texto, categoria y precio.
+  const resultados = productos.filter((producto) => {
+    const nombre = producto.nom ? producto.nom.toLowerCase() : "";
+    const descripcion = producto.desc ? producto.desc.toLowerCase() : "";
+    const tags = Array.isArray(producto.tags) ? producto.tags : [];
+
+    const coincideTexto =
+      texto === "" ||
+      nombre.includes(texto) ||
+      descripcion.includes(texto) ||
+      tags.some((tag) => tag.toLowerCase().includes(texto));
+
+    const coincideCategoria =
+      categoriaBuscada === "" || String(producto.cat).toLowerCase() === categoriaBuscada;
+
+    const coincidePrecio = producto.prec >= min && producto.prec <= max;
+
+    return producto.activo !== false && coincideTexto && coincideCategoria && coincidePrecio;
+  });
+
+  // Ordenar resultados por mejor rating.
+  return ordenarProductos(resultados, { campo: "rating", orden: "desc" });
+}
+
+function ordenarProductos(productos, opciones = {}) {
+  // Crear una copia para no modificar el arreglo original.
+  const { campo = "rating", orden = "desc" } = opciones;
+  const lista = productos.slice();
+
+  // Ordenar por el campo solicitado.
+  lista.sort((productoA, productoB) => {
+    if (orden === "asc") {
+      if (productoA[campo] < productoB[campo]) return -1;
+      if (productoA[campo] > productoB[campo]) return 1;
+      return 0;
+    }
+
+    if (productoA[campo] > productoB[campo]) return -1;
+    if (productoA[campo] < productoB[campo]) return 1;
+    return 0;
+  });
+
+  return lista;
+}
+
+module.exports = {
+  buscarProductos
+};
+
+/*
+Codigo original pendiente de reemplazar progresivamente.
 
 /// buscar productos
 //funcion para buscar productos en la db
@@ -78,3 +143,4 @@ function search(q, filters) {
   }
   return results;
 }
+*/
