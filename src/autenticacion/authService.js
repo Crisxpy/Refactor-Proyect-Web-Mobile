@@ -1,59 +1,59 @@
-const { randomUUID } = require('crypto');
 
-function calcularNivelUsuario(puntos) {
-  let nivel;
-  if (puntos<100){
-    nivel="Bronce";
+  // buscar usuario en la db
+  if (action == "login") {
+    for (var i = 0; i < dbUsers.length; i++) {
+      if (dbUsers[i].email == u && dbUsers[i].pass == p2) {
+        isOk = true;
+        tempUser = dbUsers[i];
+        break;
+      }
+    }
+    if (isOk == true) {
+      if (tempUser.bloqueado == true) {
+        msg = "usuario bloqueado";
+        isOk = false;
+        cb({ ok: false, msg: msg, data: null });
+        return;
+      }
+      if (tempUser.activo == false) {
+        msg = "usuario inactivo";
+        isOk = false;
+        cb({ ok: false, msg: msg, data: null });
+        return;
+      }
+      // calcular nivel del usuario
+      var nivel = "";
+      if (tempUser.puntos >= 0 && tempUser.puntos < 100) {
+        nivel = "bronce";
+      }
+      if (tempUser.puntos >= 100 && tempUser.puntos < 200) {
+        nivel = "plata";
+      }
+      if (tempUser.puntos >= 200 && tempUser.puntos < 300) {
+        nivel = "oro";
+      }
+      if (tempUser.puntos >= 300) {
+        nivel = "platino";
+      }
+      tempUser.nivel = nivel;
+      tempUser.ultimoLogin = new Date().toISOString();
+      sessData = { user: tempUser, token: "tkn_" + Math.random().toString(36).substr(2, 9), loginTime: new Date() };
+      currentU = tempUser;
+      cb({ ok: true, msg: "login ok", data: sessData });
+      return;
+    } else {
+      // incrementar intentos fallidos
+      for (var i = 0; i < dbUsers.length; i++) {
+        if (dbUsers[i].email == u) {
+          dbUsers[i].intentos++;
+          if (dbUsers[i].intentos >= 3) {
+            dbUsers[i].bloqueado = true;
+          }
+          break;
+        }
+      }
+      cb({ ok: false, msg: "credenciales invalidas", data: null });
+      return;
+    }
   }
-  else if (puntos<200){
-    nivel="Plata";
-  }
-  else if (puntos<300){
-    nivel="Oro";
-  }
-  else {
-    nivel = "Platino";
-  }
-  return nivel;
-}
 
-function loginUser(email, password, dbUsers) { 
-
-  const user = dbUsers.find(user => user.email === email);
-
-  const authErrorResponse = {ok: false, msg: "Credenciales invalidas", data: null}
-  if (!user){return authErrorResponse;}
-
-  if (user.pass !== password) {
-    user.intentos++;
-
-  if (user.intentos >= 3){user.block = true;}
-  return authErrorResponse;
-  }
-
-  if (user.bloqueado) {
-    return { ok: false, msg: "Usuario bloqueado", data: null};
-  }
-
-  if (!user.activo) {
-  return { ok: false, msg: "Usuario inactivo", data: null };
-  }
-
-  user.intentos = 0;
-  user.nivel = calcularNivelUsuario(user.puntos);
-  const timestamp = new Date().toISOString();
-  user.ultimoInicio = timestamp;
-  const  sessionTkn = `tkn_${randomUUID()}`
-
-  const currentSession = {
-  user: {...user},
-  token: sessionTkn,
-  login: timestamp
-  };
-  return { ok: true, msg: "Login exitoso", data: currentSession }
-}
-
-module.exports = {
-  loginUser,
-  calcularNivelUsuario
-};
