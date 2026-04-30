@@ -1,59 +1,53 @@
+﻿import { dbUsers } from "../data/database.js";
+import { isValidEmail, isValidPassword } from "../utils/validators.js";
 
-  // buscar usuario en la db
-  if (action == "login") {
-    for (var i = 0; i < dbUsers.length; i++) {
-      if (dbUsers[i].email == u && dbUsers[i].pass == p2) {
-        isOk = true;
-        tempUser = dbUsers[i];
-        break;
-      }
-    }
-    if (isOk == true) {
-      if (tempUser.bloqueado == true) {
-        msg = "usuario bloqueado";
-        isOk = false;
-        cb({ ok: false, msg: msg, data: null });
-        return;
-      }
-      if (tempUser.activo == false) {
-        msg = "usuario inactivo";
-        isOk = false;
-        cb({ ok: false, msg: msg, data: null });
-        return;
-      }
-      // calcular nivel del usuario
-      var nivel = "";
-      if (tempUser.puntos >= 0 && tempUser.puntos < 100) {
-        nivel = "bronce";
-      }
-      if (tempUser.puntos >= 100 && tempUser.puntos < 200) {
-        nivel = "plata";
-      }
-      if (tempUser.puntos >= 200 && tempUser.puntos < 300) {
-        nivel = "oro";
-      }
-      if (tempUser.puntos >= 300) {
-        nivel = "platino";
-      }
-      tempUser.nivel = nivel;
-      tempUser.ultimoLogin = new Date().toISOString();
-      sessData = { user: tempUser, token: "tkn_" + Math.random().toString(36).substr(2, 9), loginTime: new Date() };
-      currentU = tempUser;
-      cb({ ok: true, msg: "login ok", data: sessData });
-      return;
-    } else {
-      // incrementar intentos fallidos
-      for (var i = 0; i < dbUsers.length; i++) {
-        if (dbUsers[i].email == u) {
-          dbUsers[i].intentos++;
-          if (dbUsers[i].intentos >= 3) {
-            dbUsers[i].bloqueado = true;
-          }
-          break;
-        }
-      }
-      cb({ ok: false, msg: "credenciales invalidas", data: null });
-      return;
-    }
+export const getUserLevel = (points) => {
+  if (points >= 300) return "platino";
+  if (points >= 200) return "oro";
+  if (points >= 100) return "plata";
+  return "bronce";
+};
+
+export const findUserByEmail = (email) => {
+  return dbUsers.find((user) => user.email === email);
+};
+
+export const login = (email, password) => {
+  if (!isValidEmail(email) || !isValidPassword(password)) {
+    return { ok: false, msg: "Correo o contraseña inválidos", data: null };
   }
 
+  const user = dbUsers.find(
+    (item) => item.email === email && item.pass === password,
+  );
+  if (!user) {
+    const existing = dbUsers.find((item) => item.email === email);
+    if (existing) {
+      existing.intentos += 1;
+      if (existing.intentos >= 3) {
+        existing.bloqueado = true;
+      }
+    }
+    return { ok: false, msg: "Credenciales inválidas", data: null };
+  }
+
+  if (user.bloqueado) {
+    return { ok: false, msg: "Usuario bloqueado", data: null };
+  }
+
+  if (!user.activo) {
+    return { ok: false, msg: "Usuario inactivo", data: null };
+  }
+
+  user.nivel = getUserLevel(user.puntos);
+  user.ultimoLogin = new Date().toISOString();
+  user.intentos = 0;
+
+  const session = {
+    user: { ...user, pass: undefined },
+    token: `tkn_${Math.random().toString(36).slice(2, 10)}`,
+    loginTime: new Date().toISOString(),
+  };
+
+  return { ok: true, msg: "Login exitoso", data: session };
+};
