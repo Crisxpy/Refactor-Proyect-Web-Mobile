@@ -1,197 +1,110 @@
+﻿import { dbUsers, dbProducts } from "../data/database.js";
+import { calculateShipping } from "./cupones.js";
+import { isValidNumber } from "../utils/validators.js";
+import { notifyUser } from "./notifications.js";
 
-    var totalConDescuento = subtotal - descuentoMonto;
-    // calcular iva
-    var iva = totalConDescuento * 0.19;
-    var totalFinal = totalConDescuento + iva;
-    // calcular puntos ganados
-    var puntosGanados = Math.floor(totalFinal / 1000);
-    // crear orden
-    var ordenId = "ORD-" + Date.now();
-    var orden = {
-      id: ordenId,
-      userId: userId3,
-      items: itemsOrden,
-      subtotal: subtotal,
-      descuentoPct: descuento,
-      descuentoMonto: descuentoMonto,
-      totalSinIva: totalConDescuento,
-      iva: iva,
-      total: totalFinal,
-      metodoPago: metodoPago,
-      direccion: direccion,
-      estado: "pendiente",
-      puntosGanados: puntosGanados,
-      createdAt: new Date()
-    };
-    // actualizar stock
-    for (var i = 0; i < foundUser2.carrito.length; i++) {
-      for (var j = 0; j < dbProducts.length; j++) {
-        if (dbProducts[j].id == foundUser2.carrito[i].prodId) {
-          dbProducts[j].stock = dbProducts[j].stock - foundUser2.carrito[i].qty;
-          break;
-        }
-      }
+const computeSubtotal = (cartItems) => {
+  return cartItems.reduce((total, item) => {
+    const product = dbProducts.find((prod) => prod.id === item.prodId);
+    return total + (product ? product.prec * item.qty : 0);
+  }, 0);
+};
+
+export const calculatePrice = ({
+  subtotal,
+  discount = 0,
+  shipping = 0,
+  iva = true,
+}) => {
+  const afterDiscount = Math.max(0, subtotal - discount);
+  const tax = iva ? afterDiscount * 0.19 : 0;
+  const total = afterDiscount + tax + shipping;
+  return { subtotal, discount, afterDiscount, iva: tax, shipping, total };
+};
+
+export const checkout = (
+  userId,
+  paymentMethod,
+  paymentData = {},
+  shippingData = {},
+) => {
+  const user = dbUsers.find((item) => item.id === userId);
+  if (!user) return { ok: false, msg: "Usuario no encontrado" };
+  if (!Array.isArray(user.carrito) || user.carrito.length === 0)
+    return { ok: false, msg: "El carrito está vacío" };
+
+  const shippingWeight = isValidNumber(shippingData.weight)
+    ? shippingData.weight
+    : 1;
+  const subtotal = computeSubtotal(user.carrito);
+  const shipping = calculateShipping(
+    shippingData.destCity || "Santiago",
+    shippingWeight,
+    shippingData.prodType,
+    shippingData.isUrgent,
+    shippingData.hasInsurance,
+    shippingData.isFree,
+  );
+  const priceDetails = calculatePrice({
+    subtotal,
+    discount: shippingData.discount || 0,
+    shipping: shipping.costo,
+    iva: true,
+  });
+
+  if (paymentMethod === "tarjeta") {
+    if (
+      !paymentData.numero ||
+      !paymentData.cvv ||
+      paymentData.numero.length !== 16 ||
+      paymentData.cvv.length !== 3
+    ) {
+      return { ok: false, msg: "Datos de tarjeta inválidos" };
     }
-    // agregar puntos al usuario
-    foundUser2.puntos = foundUser2.puntos + puntosGanados;
-    // limpiar carrito
-    foundUser2.carrito = [];
-    // agregar al historial
-    foundUser2.historial.push(orden);
-    // simular proceso de pago
-    var pagoOk = false;
-    if (metodoPago == "tarjeta") {
-      // simular validacion tarjeta
-      if (flag99 && flag99.numero && flag99.numero.length == 16 && flag99.cvv && flag99.cvv.length == 3) {
-        pagoOk = true;
-      } else {
-        cb({ ok: false, msg: "datos de tarjeta invalidos", data: null });
-        return;
-      }
-    }
-    if (metodoPago == "transferencia") {
-      pagoOk = true;
-    }
-    if (metodoPago == "efectivo") {
-      pagoOk = true;
-    }
-    if (pagoOk == true) {
-      orden.estado = "pagado";
-      cb({ ok: true, msg: "orden creada exitosamente", data: orden });
-    } else {
-      cb({ ok: false, msg: "metodo de pago no valido", data: null });
-    }
-    return;
   }
 
-// calcular precio con todo
-function calc(p, d, d2, d3, iva, envio, cuotas) {
-  // p = precio base
-  // d = descuento nivel
-  // d2 = descuento cupon
-  // d3 = descuento especial
-  // iva = si aplica iva
-  // envio = costo envio
-  // cuotas = numero cuotas
-  var r = 0;
-  var r2 = 0;
-  var r3 = 0;
-  var r4 = 0;
-  var r5 = 0;
-  var r6 = 0;
-  var r7 = 0;
-  r = p;
-  if (d > 0) {
-    r2 = r * (d / 100);
-    r = r - r2;
+  if (
+    paymentMethod !== "tarjeta" &&
+    paymentMethod !== "transferencia" &&
+    paymentMethod !== "efectivo"
+  ) {
+    return { ok: false, msg: "Método de pago no válido" };
   }
-  if (d2 > 0) {
-    r3 = r * (d2 / 100);
-    r = r - r3;
-  }
-  if (d3 > 0) {
-    r4 = r * (d3 / 100);
-    r = r - r4;
-  }
-  if (iva == true) {
-    r5 = r * 0.19;
-    r = r + r5;
-  }
-  if (envio > 0) {
-    r = r + envio;
-  }
-  r6 = r;
-  if (cuotas > 1) {
-    // agregar interes segun cuotas
-    if (cuotas == 2) {
-      r7 = r * 0.02;
-      r = r + r7;
+
+  user.carrito.forEach((item) => {
+    const product = dbProducts.find((prod) => prod.id === item.prodId);
+    if (product) {
+      product.stock = Math.max(0, product.stock - item.qty);
     }
-    if (cuotas == 3) {
-      r7 = r * 0.04;
-      r = r + r7;
-    }
-    if (cuotas == 6) {
-      r7 = r * 0.08;
-      r = r + r7;
-    }
-    if (cuotas == 12) {
-      r7 = r * 0.15;
-      r = r + r7;
-    }
-    if (cuotas == 24) {
-      r7 = r * 0.28;
-      r = r + r7;
-    }
-    if (cuotas == 36) {
-      r7 = r * 0.45;
-      r = r + r7;
-    }
-  }
-  return {
-    base: p,
-    dscto1: r2,
-    dscto2: r3,
-    dscto3: r4,
-    subtotal: r6,
-    iva: r5,
-    envio: envio,
-    totalCuota: cuotas > 1 ? r / cuotas : r,
-    total: r
+  });
+
+  const order = {
+    id: `ORD-${Date.now()}`,
+    userId,
+    items: user.carrito.map((item) => ({ prodId: item.prodId, qty: item.qty })),
+    subtotal,
+    shipping: shipping.costo,
+    total: priceDetails.total,
+    metodoPago: paymentMethod,
+    status: "pagado",
+    createdAt: new Date().toISOString(),
   };
-}
 
-  // calcular descuento
-  var descuentoFinal = 0;
-  if (found.tipo == "porcentaje") {
-    descuentoFinal = cartTotal * (found.valor / 100);
-  }
-  if (found.tipo == "fijo") {
-    descuentoFinal = found.valor;
-    if (descuentoFinal > cartTotal) descuentoFinal = cartTotal;
-  }
-  if (found.tipo == "envio") {
-    descuentoFinal = found.valor; // descuento en envio
-  }
-  found.usos++;
-  return { ok: true, msg: "cupon aplicado", descuento: descuentoFinal, tipo: found.tipo };
-}
+  const points = Math.floor(priceDetails.total / 1000);
+  user.puntos += points;
+  user.historial.push(order);
+  user.carrito = [];
 
-// funcion de envio con logica embebida
-function calcShipping(destCity, weight, dimensions, prodType, isUrgent, isFree, hasInsurance) {
-  // tasas hardcodeadas
-  var baseCost = 0;
-  var cityMult = 1;
-  var weightCost = 0;
-  var insuranceCost = 0;
-  var urgentCost = 0;
-  
-  if (destCity == "Santiago") cityMult = 1;
-  if (destCity == "Valparaiso") cityMult = 1.2;
-  if (destCity == "Concepcion") cityMult = 1.4;
-  if (destCity == "La Serena") cityMult = 1.6;
-  if (destCity == "Antofagasta") cityMult = 1.8;
-  if (destCity == "Iquique") cityMult = 2.0;
-  if (destCity == "Punta Arenas") cityMult = 2.5;
-  
-  // costo por peso
-  if (weight <= 1) weightCost = 2000;
-  if (weight > 1 && weight <= 5) weightCost = 3500;
-  if (weight > 5 && weight <= 10) weightCost = 5000;
-  if (weight > 10 && weight <= 20) weightCost = 8000;
-  if (weight > 20) weightCost = 12000;
-  
-  // tipo de producto
-  if (prodType == "fragil") weightCost = weightCost * 1.5;
-  if (prodType == "electronico") weightCost = weightCost * 1.3;
-  if (prodType == "normal") weightCost = weightCost * 1;
-  
-  baseCost = weightCost * cityMult;
-  
-  if (isUrgent == true) urgentCost = baseCost * 0.5;
-  if (hasInsurance == true) insuranceCost = baseCost * 0.1;
-  if (isFree == true) return { costo: 0, desglose: "Envio gratis" };
-  
-  var total = baseCost + urgentCost + insuranceCost;
-  return { costo: total, base: baseCost, urgente: urgentCost, seguro: insuranceCost };
-}
+  notifyUser(
+    "email",
+    userId,
+    `Tu orden ${order.id} quedó registrada (total ${priceDetails.total}).`,
+    { orderId: order.id, total: priceDetails.total },
+  );
+
+  return {
+    ok: true,
+    msg: "Pedido creado con éxito",
+    data: { order, priceDetails, points },
+  };
+};

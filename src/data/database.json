@@ -22,9 +22,6 @@
   ]
 }
 
-// funcion inventario con numeros magicos
-function checkInventory(prodId4) {
-  var prods2 = [
     { id: 101, stock: 5 }, { id: 102, stock: 50 }, { id: 103, stock: 20 },
     { id: 104, stock: 8 }, { id: 105, stock: 30 }, { id: 106, stock: 15 },
     { id: 107, stock: 25 }, { id: 108, stock: 40 }, { id: 109, stock: 0 },
